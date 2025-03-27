@@ -1,0 +1,37 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest' # Or windows-latest
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.9' # Or your desired Python version
+    architecture: 'x64'
+
+- script: |
+    pip install azure-functions
+    pip install unittest2 # needed for some older python versions.
+    python -m unittest test_app.py
+  displayName: 'Run Tests'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/functionapp.zip'
+    replaceExistingArchive: true
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/functionapp.zip'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+- task: AzureFunctionApp@1
+  inputs:
+    azureSubscription: '<Your Azure Subscription Name>'
+    appName: '<Your Function App Name>'
+    package: '$(Build.ArtifactStagingDirectory)/functionapp.zip'
